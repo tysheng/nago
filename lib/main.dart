@@ -53,41 +53,53 @@ class ListPageState extends State<ListPage> {
 
   @override
   void dispose() {
-    controller.removeListener(_scrollListener);
+    removeListener();
     super.dispose();
   }
 
+  void removeListener() {
+    controller.removeListener(_scrollListener);
+  }
+
   void _scrollListener() {
-    print(controller.position.extentAfter);
-    if (controller.position.extentAfter < 500) {
+//    print(controller.position.pixels);
+    if (controller.position.pixels == controller.position.maxScrollExtent) {
       fetchData();
     }
   }
 
   http.Response response;
+  var pid = 1;
+  var isFetching = false;
 
   Future<List<String>> fetchPost() async {
-    var pid = 1;
-    if (response == null) {
-      response =
-          await http.get('http://dili.bdatu.com/jiekou/mains/p$pid.html');
-    }
+    response = await http.get('http://dili.bdatu.com/jiekou/mains/p$pid.html');
     if (response.statusCode == 200) {
       // If the call to the server was successful, parse the JSON
       Map<String, Object> mainList = json.decode(response.body);
       List<Object> albums = mainList['album'];
-      return albums.map((album) => (album as Map<String, Object>)['url'] as String).toList();
+      return albums
+          .map((album) => (album as Map<String, Object>)['url'] as String)
+          .toList();
     } else {
+      removeListener();
       // If that call was not successful, throw an error.
       throw Exception('Failed to load post');
     }
   }
 
   fetchData() async {
+    if (isFetching) {
+      return;
+    }
+    isFetching = true;
     final List<String> response = await fetchPost();
     setState(() {
       items.addAll(response);
     });
+    pid++;
+    isFetching = false;
+    print("pid $pid");
   }
 
   FutureBuilder futureBuilder(int index) {
@@ -127,9 +139,14 @@ class ListPageState extends State<ListPage> {
 //      padding: EdgeInsets.all(8.0),
 //      itemExtent: 80.0,
       controller: controller,
-      itemCount: items.length,
+      itemCount: items.length + 1,
       itemBuilder: (BuildContext context, int index) {
-        return new Image.network(items[index]);
+        if (index == items.length) {
+          return Align(
+              alignment: Alignment.center, child: CircularProgressIndicator()
+          );
+        }
+        return Image.network(items[index]);
       },
     );
     return Scaffold(
