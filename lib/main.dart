@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:nago/data.dart';
+import 'package:http/http.dart' as http;
 
 void main() => runApp(MyApp());
 
@@ -34,41 +37,99 @@ class ListPage extends StatefulWidget {
   }
 }
 
+const imageUrl =
+    'https://raw.githubusercontent.com/flutter/website/master/src/_includes/code/layout/lakes/images/lake.jpg';
+
 class ListPageState extends State<ListPage> {
+  ScrollController controller;
+
+  List<String> items = new List.generate(5, (index) => imageUrl);
+
+  @override
+  void initState() {
+    controller = new ScrollController()..addListener(_scrollListener);
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    controller.removeListener(_scrollListener);
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    print(controller.position.extentAfter);
+    if (controller.position.extentAfter < 500) {
+      fetchData();
+    }
+  }
+
+  http.Response response;
+
+  Future<List<String>> fetchPost() async {
+    var pid = 1;
+    if (response == null) {
+      response =
+          await http.get('http://dili.bdatu.com/jiekou/mains/p$pid.html');
+    }
+    if (response.statusCode == 200) {
+      // If the call to the server was successful, parse the JSON
+      Map<String, Object> mainList = json.decode(response.body);
+      List<Object> albums = mainList['album'];
+      return albums.map((album) => (album as Map<String, Object>)['url'] as String).toList();
+    } else {
+      // If that call was not successful, throw an error.
+      throw Exception('Failed to load post');
+    }
+  }
+
+  fetchData() async {
+    final List<String> response = await fetchPost();
+    setState(() {
+      items.addAll(response);
+    });
+  }
+
+  FutureBuilder futureBuilder(int index) {
+    return FutureBuilder(
+      future: fetchEntry(index),
+      builder: (context, snapshot) {
+        switch (snapshot.connectionState) {
+          case ConnectionState.none:
+          case ConnectionState.waiting:
+            return SizedBox(
+              height: MediaQuery.of(context).size.height * 2,
+              child: Align(
+                  alignment: Alignment.topCenter,
+                  child: CircularProgressIndicator()),
+            );
+          case ConnectionState.done:
+          case ConnectionState.active:
+            if (snapshot.hasError) {
+              return Text('Error: ${snapshot.error}');
+            } else {
+              var productInfo = snapshot.data;
+
+              return ListTile(
+                leading: Icon(Icons.shopping_cart),
+                title: Text(productInfo['name']),
+                subtitle: Text('price: ${productInfo['price']}USD'),
+              );
+            }
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     var listView = ListView.builder(
 //      padding: EdgeInsets.all(8.0),
 //      itemExtent: 80.0,
+      controller: controller,
+      itemCount: items.length,
       itemBuilder: (BuildContext context, int index) {
-        return FutureBuilder(
-          future: fetchEntry(index),
-          builder: (context, snapshot) {
-            switch (snapshot.connectionState) {
-              case ConnectionState.none:
-              case ConnectionState.waiting:
-                return SizedBox(
-                  height: MediaQuery.of(context).size.height * 2,
-                  child: Align(
-                      alignment: Alignment.topCenter,
-                      child: CircularProgressIndicator()),
-                );
-              case ConnectionState.done:
-              case ConnectionState.active:
-                if (snapshot.hasError) {
-                  return Text('Error: ${snapshot.error}');
-                } else {
-                  var productInfo = snapshot.data;
-
-                  return ListTile(
-                    leading: Icon(Icons.shopping_cart),
-                    title: Text(productInfo['name']),
-                    subtitle: Text('price: ${productInfo['price']}USD'),
-                  );
-                }
-            }
-          },
-        );
+        return new Image.network(items[index]);
       },
     );
     return Scaffold(
