@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:nago/home.dart';
 
@@ -9,13 +7,13 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Nago',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        accentColor: Color(0xFFFFC107),
+        primaryColorDark: Color(0xffc7c7c7),
+        primaryColor: Colors.white
       ),
       home: ListPage(),
     );
   }
 }
-
-
