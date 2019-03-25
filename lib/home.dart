@@ -1,25 +1,43 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:nago/album.dart';
 import 'package:nago/data.dart';
 import 'package:nago/http.dart';
 
 class ListPage extends StatefulWidget {
+  static const platform = const MethodChannel(
+      'tysheng.nago.channel');
+
+  Future<dynamic> _handleMethod(MethodCall call) async {
+    switch(call.method) {
+      case "message":
+        debugPrint(call.arguments);
+        return new Future.value("");
+    }
+  }
+
   @override
   State<StatefulWidget> createState() {
     return ListPageState();
   }
+
+  ListPage(){
+    platform.setMethodCallHandler(_handleMethod);
+  }
 }
 
 class ListPageState extends State<ListPage> {
-  ScrollController controller;
+  ScrollController _controller;
 
-  List<Album> items = List();
+  List<Album> _items = List();
 
+  var _pid = 1;
+  var _isFetching = false;
   @override
   void initState() {
-    controller = ScrollController()..addListener(_scrollListener);
+    _controller = ScrollController()..addListener(_scrollListener);
     super.initState();
     _fetchData();
   }
@@ -31,39 +49,35 @@ class ListPageState extends State<ListPage> {
   }
 
   void _removeListener() {
-    controller.removeListener(_scrollListener);
+    _controller.removeListener(_scrollListener);
   }
 
   void _scrollListener() {
-    if (controller.position.pixels == controller.position.maxScrollExtent) {
+    if (_controller.position.pixels == _controller.position.maxScrollExtent) {
       _fetchData();
     }
   }
 
-  Response<String> response;
-  var pid = 1;
-  var isFetching = false;
-
   Future<List<Album>> _fetchPost() async {
-    response = await Http.instance().get('/mains/p$pid.html');
+    Response<String> response = await Http.instance().get('/mains/p$_pid.html');
     Map<String, Object> mainList = json.decode(response.data);
     List<dynamic> albums = mainList['album'];
     return albums.map((album) => Album.create(album)).toList();
   }
 
   _fetchData() async {
-    if (isFetching) {
+    if (_isFetching) {
       return;
     }
-    isFetching = true;
+    _isFetching = true;
     final List<Album> response = await _fetchPost();
     setState(() {
       print(response.join());
-      items.addAll(response);
+      _items.addAll(response);
     });
-    pid++;
-    isFetching = false;
-    print("pid $pid");
+    _pid++;
+    _isFetching = false;
+    print("pid $_pid");
   }
 
   _jumpToAlbum(String albumId) {
@@ -79,14 +93,14 @@ class ListPageState extends State<ListPage> {
       separatorBuilder: (BuildContext context, int index) => Container(
           height: MediaQuery.of(context).devicePixelRatio * 3,
           color: Color(0x66aaaaaa)),
-      controller: controller,
-      itemCount: items.length + 1,
+      controller: _controller,
+      itemCount: _items.length + 1,
       itemBuilder: (BuildContext context, int index) {
-        if (index == items.length) {
+        if (index == _items.length) {
           return Align(
               alignment: Alignment.center, child: CircularProgressIndicator());
         }
-        var item = items[index];
+        var item = _items[index];
         return GestureDetector(
             onTap: () => _jumpToAlbum(item.id),
             child: Container(

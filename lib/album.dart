@@ -2,9 +2,12 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:nago/data.dart';
 import 'package:nago/http.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+
+import 'package:flukit/flukit.dart';
 
 class AlbumPage extends StatefulWidget {
   final String _albumId;
@@ -31,6 +34,7 @@ class _AlbumState extends State<AlbumPage> with SingleTickerProviderStateMixin {
   void initState() {
     _controller = AnimationController(vsync: this);
     super.initState();
+
     _fetchAlbums(_albumId);
   }
 
@@ -48,6 +52,7 @@ class _AlbumState extends State<AlbumPage> with SingleTickerProviderStateMixin {
     setState(() {
       _list.addAll(pics);
       _loadSuccess = true;
+
       _setCurrentPicture(0);
     });
   }
@@ -113,13 +118,7 @@ class _AlbumState extends State<AlbumPage> with SingleTickerProviderStateMixin {
         child: Icon(Icons.error),
       ),
     );
-
-    return Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        imageView
-      ],
-    );
+    return imageView;
   }
 
   void _setCurrentPicture(int i) {
@@ -130,6 +129,7 @@ class _AlbumState extends State<AlbumPage> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext mainContext) {
+    Widget bottomText = _bottomText();
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -139,10 +139,13 @@ class _AlbumState extends State<AlbumPage> with SingleTickerProviderStateMixin {
             controller: _pageController,
             onPageChanged: _setCurrentPicture,
             itemBuilder: (BuildContext context, int index) {
-              return _albumView(index);
+              return ScaleView(
+                maxScale: 5,
+                child: _albumView(index),
+              );
             },
           ),
-          _bottomText(),
+          bottomText,
           Visibility(
             child: SizedBox.expand(
               child: FittedBox(
